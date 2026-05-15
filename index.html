@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي - النسخة المستقرة</title>
+    <title>الروم الصوتي - اختراق الشبكات</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
@@ -13,7 +13,10 @@
         .app-container { width: 100%; max-width: 400px; height: 100vh; max-height: 850px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         .header { padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); z-index: 10; }
         .header h2 { font-size: 1.2rem; margin-bottom: 5px; color: #f8fafc; }
-        .header p { font-size: 0.8rem; color: #94a3b8; }
+        
+        /* شاشة الفحص المصغرة لمعرفة الأخطاء */
+        #sysLogs { background: rgba(0,0,0,0.8); color: #00ff00; font-size: 10px; padding: 5px; height: 50px; overflow-y: auto; text-align: left; direction: ltr; font-family: monospace; border-bottom: 1px solid #333; }
+        
         .stage { padding: 30px 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; justify-items: center; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
         .mic-slot { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); border: 2px dashed rgba(255, 255, 255, 0.2); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
         .mic-slot i { font-size: 1.2rem; color: #64748b; }
@@ -43,6 +46,9 @@
 <body>
 
     <div class="app-container">
+        
+        <div id="sysLogs">System Ready...</div>
+
         <div class="header">
             <h2>الروم الصوتي العام 🎙️</h2>
             <p id="statusText">جاري الاتصال بالسيرفر...</p>
@@ -77,6 +83,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // دالة الطباعة على الشاشة (لتتبع الأخطاء)
+        const sysLogs = document.getElementById('sysLogs');
+        function log(msg) {
+            sysLogs.innerHTML += `<br>> ${msg}`;
+            sysLogs.scrollTop = sysLogs.scrollHeight;
+            console.log(msg);
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
             authDomain: "fn1998.firebaseapp.com",
@@ -88,7 +102,6 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
         const messagesRef = ref(db, 'room-messages');
         const micsRef = ref(db, 'room-mics'); 
 
@@ -97,43 +110,60 @@
         let myPeerId = null;
         let localStream = null;
         let activeConnections = {}; 
-        let globalMicsData = {}; // لحفظ نسخة محلية من بيانات المايكات
+        let globalMicsData = {}; 
 
         // ==========================================
-        // 1. إعداد محرك الصوت (PeerJS) بالطريقة العكسية
+        // 1. إعداد محرك الصوت باختراق الـ 4G (Google STUN)
         // ==========================================
-        const peer = new Peer();
+        log("Initializing PeerJS with STUN servers...");
+        const peer = new Peer({
+            config: {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' }
+                ]
+            }
+        });
         
         peer.on('open', (id) => {
             myPeerId = id;
             document.getElementById('statusText').innerText = `متصل كـ: ${myName}`;
+            log("Connected to Signal Server. My ID: " + id.substring(0,5) + "...");
         });
 
-        // عندما أنا أكون المتحدث (على المايك)، وأستقبل "إشارة" من مستمع
+        peer.on('error', (err) => {
+            log("PEER_ERROR: " + err.type);
+        });
+
+        // المتحدث يستقبل الطلب من المستمع
         peer.on('connection', (conn) => {
-            conn.on('open', () => {
-                if (localStream) {
-                    // أرسل له مسار المايك الحقيقي الخاص بي
-                    peer.call(conn.peer, localStream);
+            conn.on('data', (data) => {
+                if (data === 'CALL_ME_BRO') {
+                    log("Listener requested voice. Sending stream...");
+                    if (localStream) {
+                        peer.call(conn.peer, localStream);
+                    } else {
+                        log("Warning: Mic is null!");
+                    }
                 }
             });
         });
 
-        // عندما أنا أكون المستمع، وأستقبل "مكالمة الصوت" من المتحدث
+        // المستمع يستقبل مسار الصوت من المتحدث
         peer.on('call', (call) => {
-            // أرد على المكالمة فوراً (بدون إرسال مايك من جهتي)
-            call.answer(); 
+            log("Incoming voice call from speaker...");
+            call.answer(); // نرد على المكالمة فوراً
             
             call.on('stream', (remoteStream) => {
-                // البحث عن المايك الذي ينتمي إليه هذا الصوت في الواجهة
+                log("Voice STREAM RECEIVED! Mapping to slot...");
                 for (let i = 0; i < 4; i++) {
                     if (globalMicsData[i] && globalMicsData[i].peerId === call.peer) {
                         const audioElement = document.getElementById(`audio-${i}`);
                         audioElement.srcObject = remoteStream;
-                        
-                        // محاولة التشغيل، وإذا رفض المتصفح نظهر تنبيهاً
-                        audioElement.play().catch(e => {
-                            console.log("انقر على الشاشة لسماع الصوت", e);
+                        audioElement.play().then(() => {
+                            log("Audio Playing successfully!");
+                        }).catch(e => {
+                            log("Play blocked! Click screen.");
                         });
                         break;
                     }
@@ -158,21 +188,27 @@
                     slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
                     nameElement.innerText = slotData.name;
 
-                    // إذا كان هناك شخص على المايك (وليس أنا)، أرسل له إشارة ليعطيني صوته
+                    // إذا كان هناك شخص على المايك (وليس أنا)
                     if (slotData.peerId !== myPeerId && !activeConnections[i]) {
-                        const conn = peer.connect(slotData.peerId); // إرسال الإشارة الصامتة
+                        log("Found Speaker. Requesting audio...");
+                        const conn = peer.connect(slotData.peerId);
                         activeConnections[i] = conn;
+                        
+                        conn.on('open', () => {
+                            log("Ping sent to speaker!");
+                            conn.send('CALL_ME_BRO');
+                        });
                     }
                 } else {
                     slotElement.classList.remove('active');
                     slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
                     nameElement.innerText = "فارغ";
                     
-                    // تنظيف وإغلاق الصوت إذا نزل الشخص من المايك
                     if (activeConnections[i]) {
                         activeConnections[i].close();
                         delete activeConnections[i];
                         audioElement.srcObject = null;
+                        log(`Slot ${i} closed.`);
                     }
                     
                     if (myCurrentMicIndex === i) {
@@ -183,7 +219,6 @@
             }
         });
 
-        // أزرار المايكات
         document.querySelectorAll('.mic-slot').forEach(slot => {
             slot.addEventListener('click', async function() {
                 const index = parseInt(this.getAttribute('data-index'));
@@ -193,6 +228,7 @@
                         remove(ref(db, `room-mics/${index}`)); 
                         stopMyMic();
                         myCurrentMicIndex = -1;
+                        log("Left mic.");
                     }
                     return;
                 }
@@ -209,6 +245,7 @@
 
                 if (confirm("هل تريد الصعود والتحدث؟")) {
                     try {
+                        log("Requesting mic permission...");
                         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                         myCurrentMicIndex = index;
                         
@@ -216,10 +253,11 @@
                             name: myName,
                             peerId: myPeerId
                         });
+                        log("Mic opened and saved to DB.");
 
                     } catch (err) {
+                        log("Mic Error: " + err.message);
                         alert("يجب إعطاء صلاحية الميكروفون للصعود.");
-                        console.error(err);
                     }
                 }
             });
