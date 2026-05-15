@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الروم الصوتي - الواجهة التفاعلية</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* إعدادات عامة */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #0b0f19; /* خلفية داكنة جداً */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* إطار محاكاة شاشة الهاتف */
+        .app-container {
+            width: 100%;
+            max-width: 400px; /* عرض شاشة الهاتف */
+            height: 100vh;
+            max-height: 850px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* رأس الصفحة (Header) */
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        .header h2 { font-size: 1.2rem; margin-bottom: 5px; color: #f8fafc; }
+        .header p { font-size: 0.8rem; color: #94a3b8; }
+
+        /* منطقة المايكات (المنصة) */
+        .stage {
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            justify-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* تصميم المايك (فارغ وممتلئ) */
+        .mic-slot {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .mic-slot i { font-size: 1.2rem; color: #64748b; }
+
+        /* حالة المايك عندما يكون المستخدم عليه */
+        .mic-slot.active {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            border: 2px solid #00d2ff;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
+        }
+        .mic-slot.active i { color: #fff; }
+        
+        /* علامة تموج الصوت للمايك النشط */
+        .mic-slot.active::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #00d2ff;
+            animation: ripple 1.5s infinite ease-out;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        .slot-name {
+            font-size: 0.7rem;
+            margin-top: 5px;
+            color: #cbd5e1;
+            text-align: center;
+            width: 100%;
+        }
+
+        .slot-wrapper { display: flex; flex-direction: column; align-items: center; }
+
+        /* منطقة الدردشة */
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-sender { font-size: 0.7rem; color: #94a3b8; margin-bottom: 3px; margin-right: 5px;}
+        
+        .msg-bubble {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 15px 15px 0 15px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #f1f5f9;
+        }
+
+        /* رسالتي أنا */
+        .message.mine { align-self: flex-end; }
+        .message.mine .msg-bubble {
+            background: #3b82f6;
+            border-radius: 15px 15px 15px 0;
+            color: #fff;
+        }
+        .message.mine .msg-sender { display: none; }
+
+        /* شريط الإدخال في الأسفل */
+        .input-area {
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .chat-input:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); }
+
+        .send-btn {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+
+        .send-btn:hover { background: #2563eb; transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <div class="header">
+            <h2>الروم الصوتي العام 🎙️</h2>
+            <p>المتواجدون: 24 شخص</p>
+        </div>
+
+        <div class="stage">
+            <div class="slot-wrapper">
+                <div class="mic-slot" id="slot-0" onclick="handleMicClick(0)">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="slot-name" id="name-0">فارغ</div>
+            </div>
+            
+            <div class="slot-wrapper">
+                <div class="mic-slot" id="slot-1" onclick="handleMicClick(1)">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="slot-name" id="name-1">فارغ</div>
+            </div>
+
+            <div class="slot-wrapper">
+                <div class="mic-slot" id="slot-2" onclick="handleMicClick(2)">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="slot-name" id="name-2">فارغ</div>
+            </div>
+
+            <div class="slot-wrapper">
+                <div class="mic-slot" id="slot-3" onclick="handleMicClick(3)">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="slot-name" id="name-3">فارغ</div>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="message">
+                <div class="msg-sender">أحمد علي</div>
+                <div class="msg-bubble">السلام عليكم، هل يوجد أحد هنا؟</div>
+            </div>
+            <div class="message">
+                <div class="msg-sender">سارة</div>
+                <div class="msg-bubble">وعليكم السلام، نعم تفضل اصعد على المايك 😊</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="اكتب رسالتك هنا..." onkeypress="handleKeyPress(event)">
+            <button class="send-btn" onclick="sendMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // المتغيرات لحالة المستخدم
+        let myCurrentMicIndex = -1; // -1 تعني أنني لست على أي مايك
+        const myName = "أنت"; // اسم المستخدم المحلي
+
+        // وظيفة التعامل مع الضغط على المايك
+        function handleMicClick(index) {
+            const slotElement = document.getElementById(`slot-${index}`);
+            const nameElement = document.getElementById(`name-${index}`);
+
+            // الحالة الأولى: أنا أضغط على المايك الذي أجلس عليه حالياً (أريد النزول)
+            if (myCurrentMicIndex === index) {
+                const leave = confirm("هل تريد النزول من المايك؟");
+                if (leave) {
+                    // إرجاع المايك لحالته الفارغة
+                    slotElement.classList.remove('active');
+                    slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    nameElement.innerText = "فارغ";
+                    myCurrentMicIndex = -1; // تصفير حالتي
+                }
+                return;
+            }
+
+            // الحالة الثانية: أنا أجلس على مايك، وأحاول الضغط على مايك آخر
+            if (myCurrentMicIndex !== -1 && myCurrentMicIndex !== index) {
+                alert("أنت متواجد على مايك آخر بالفعل! انزل أولاً لتتمكن من الصعود هنا.");
+                return;
+            }
+
+            // الحالة الثالثة: أنا في الأسفل وأريد الصعود على هذا المايك الفارغ
+            const join = confirm("هل تريد الصعود على المايك والتحدث؟");
+            if (join) {
+                // تغيير شكل المايك ليصبح نشطاً
+                slotElement.classList.add('active');
+                slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                nameElement.innerText = myName;
+                myCurrentMicIndex = index; // حفظ مكان المايك الخاص بي
+            }
+        }
+
+        // وظيفة إرسال الرسالة في الشات
+        function sendMessage() {
+            const inputField = document.getElementById('chatInput');
+            const messageText = inputField.value.trim();
+
+            if (messageText === "") return; // لا ترسل رسالة فارغة
+
+            const chatArea = document.getElementById('chatArea');
+
+            // إنشاء عنصر الرسالة الجديدة
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message mine'; // إضافة كلاس 'mine' لتمييز رسالتي باللون الأزرق
+
+            messageDiv.innerHTML = `
+                <div class="msg-bubble">${messageText}</div>
+            `;
+
+            // إضافة الرسالة للشاشة
+            chatArea.appendChild(messageDiv);
+
+            // تفريغ الحقل والنزول لأسفل الشات تلقائياً
+            inputField.value = "";
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // السماح بالإرسال عند الضغط على زر Enter في لوحة المفاتيح
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
