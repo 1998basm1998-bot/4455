@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي - Live Chat</title>
+    <title>الروم الصوتي الشامل - Chat & Audio</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
     <style>
-        /* نفس التصميم السابق الجميل */
+        /* التصميم نفسه تماماً ولم يتغير */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background: #0b0f19; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; }
         .app-container { width: 100%; max-width: 400px; height: 100vh; max-height: 850px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
@@ -18,8 +21,8 @@
         .mic-slot i { font-size: 1.2rem; color: #64748b; }
         .mic-slot.active { background: linear-gradient(135deg, #3b82f6, #06b6d4); border: 2px solid #00d2ff; box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
         .mic-slot.active i { color: #fff; }
-        .slot-name { font-size: 0.7rem; margin-top: 5px; color: #cbd5e1; text-align: center; width: 100%; }
-        .slot-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .slot-name { font-size: 0.7rem; margin-top: 5px; color: #cbd5e1; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+        .slot-wrapper { display: flex; flex-direction: column; align-items: center; width: 60px; }
         .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
         .message { max-width: 80%; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -40,18 +43,17 @@
     <div class="app-container">
         <div class="header">
             <h2>الروم الصوتي العام 🎙️</h2>
-            <p>المتواجدون: 2 شخص</p>
+            <p id="statusText">جاري الاتصال بالسيرفر...</p>
         </div>
 
         <div class="stage">
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-0"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-0">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-1"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-1">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-2"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-2">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-3"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-3">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-0" data-index="0"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-0">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-1" data-index="1"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-1">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-2" data-index="2"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-2">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-3" data-index="3"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-3">فارغ</div></div>
         </div>
 
-        <div class="chat-area" id="chatArea">
-            </div>
+        <div class="chat-area" id="chatArea"></div>
 
         <div class="input-area">
             <input type="text" id="chatInput" class="chat-input" placeholder="اكتب رسالتك هنا...">
@@ -59,87 +61,211 @@
                 <i class="fa-solid fa-paper-plane"></i>
             </button>
         </div>
+
+        <audio id="audio-0" autoplay></audio>
+        <audio id="audio-1" autoplay></audio>
+        <audio id="audio-2" autoplay></audio>
+        <audio id="audio-3" autoplay></audio>
     </div>
 
     <script type="module">
-        // 1. استدعاء مكتبات الفايربيس (التطبيق + قاعدة البيانات اللحظية)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // 2. إعدادات مشروعك
+        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
             authDomain: "fn1998.firebaseapp.com",
             projectId: "fn1998",
             storageBucket: "fn1998.firebasestorage.app",
             messagingSenderId: "326727010464",
-            appId: "1:326727010464:web:831654b2593ae59d5821c5",
-            measurementId: "G-8W5C8ZXJZE"
+            appId: "1:326727010464:web:831654b2593ae59d5821c5"
         };
 
-        // 3. تهيئة التطبيق وقاعدة البيانات
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         
-        // إنشاء "مسار" في قاعدة البيانات نسميه room-messages
         const messagesRef = ref(db, 'room-messages');
+        const micsRef = ref(db, 'room-mics'); // مسار جديد لحفظ بيانات المايكات
 
-        // عناصر الواجهة
+        const myName = "ضيف_" + Math.floor(Math.random() * 1000);
+        let myCurrentMicIndex = -1;
+        let myPeerId = null;
+        let localStream = null;
+        let activeCalls = {}; // لحفظ الاتصالات الصوتية النشطة
+
+        // ==========================================
+        // 1. إعداد PeerJS (محرك الصوت)
+        // ==========================================
+        const peer = new Peer();
+        
+        peer.on('open', (id) => {
+            myPeerId = id;
+            document.getElementById('statusText').innerText = `متصل كـ: ${myName}`;
+        });
+
+        // عندما يتصل بنا شخص للاستماع لصوتنا، نرد عليه ونعطيه المايك الخاص بنا
+        peer.on('call', (call) => {
+            if (localStream) {
+                call.answer(localStream);
+            }
+        });
+
+        // دالة مساعدة لإنشاء "صوت صامت" لكي نتمكن من الاتصال بالآخرين للاستماع فقط
+        function createEmptyAudioStream() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const dest = ctx.createMediaStreamDestination();
+            return dest.stream;
+        }
+
+        // ==========================================
+        // 2. منطق إدارة المايكات والربط مع Firebase
+        // ==========================================
+        
+        // الاستماع الدائم لتغيرات المايكات من قاعدة البيانات لتحديث الواجهة للجميع
+        onValue(micsRef, (snapshot) => {
+            const micsData = snapshot.val() || {};
+            
+            for (let i = 0; i < 4; i++) {
+                const slotData = micsData[i];
+                const slotElement = document.getElementById(`slot-${i}`);
+                const nameElement = document.getElementById(`name-${i}`);
+                const audioElement = document.getElementById(`audio-${i}`);
+
+                if (slotData) {
+                    // المايك محجوز
+                    slotElement.classList.add('active');
+                    slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                    nameElement.innerText = slotData.name;
+
+                    // إذا كان الشخص الموجود على المايك ليس أنا، أتصل به لأسمع صوته
+                    if (slotData.peerId !== myPeerId && !activeCalls[i]) {
+                        const dummyStream = createEmptyAudioStream(); // إرسال تيار صامت لكي لا نفتح مايك المستمع
+                        const call = peer.call(slotData.peerId, dummyStream);
+                        activeCalls[i] = call;
+                        
+                        call.on('stream', (remoteStream) => {
+                            audioElement.srcObject = remoteStream;
+                        });
+                    }
+                } else {
+                    // المايك فارغ
+                    slotElement.classList.remove('active');
+                    slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                    nameElement.innerText = "فارغ";
+                    
+                    // إغلاق الاتصال الصوتي إذا كان مفتوحاً
+                    if (activeCalls[i]) {
+                        activeCalls[i].close();
+                        delete activeCalls[i];
+                        audioElement.srcObject = null;
+                    }
+                    
+                    // إذا كان المايك الفارغ مسجلاً باسمي محلياً عن طريق الخطأ، أصفره
+                    if (myCurrentMicIndex === i) {
+                        myCurrentMicIndex = -1;
+                        stopMyMic();
+                    }
+                }
+            }
+        });
+
+        // التعامل مع النقرات على دوائر المايكات
+        document.querySelectorAll('.mic-slot').forEach(slot => {
+            slot.addEventListener('click', async function() {
+                const index = parseInt(this.getAttribute('data-index'));
+
+                // الحالة 1: أريد النزول من المايك
+                if (myCurrentMicIndex === index) {
+                    if (confirm("هل تريد النزول من المايك؟")) {
+                        remove(ref(db, `room-mics/${index}`)); // حذف اسمي من الفايربيس
+                        stopMyMic();
+                        myCurrentMicIndex = -1;
+                    }
+                    return;
+                }
+
+                // الحالة 2: أنا على مايك وأحاول الضغط على مايك آخر
+                if (myCurrentMicIndex !== -1 && myCurrentMicIndex !== index) {
+                    alert("أنت متواجد على مايك آخر بالفعل!");
+                    return;
+                }
+
+                // الحالة 3: المايك محجوز لشخص آخر
+                if (this.classList.contains('active')) {
+                    alert("هذا المايك محجوز لشخص آخر.");
+                    return;
+                }
+
+                // الحالة 4: المايك فارغ وأريد الصعود
+                if (confirm("هل تريد الصعود والتحدث؟")) {
+                    try {
+                        // طلب إذن المايكروفون من الهاتف
+                        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        myCurrentMicIndex = index;
+                        
+                        // تسجيل بياناتي في الفايربيس في هذا المايك ليسمعني الآخرون
+                        set(ref(db, `room-mics/${index}`), {
+                            name: myName,
+                            peerId: myPeerId
+                        });
+
+                    } catch (err) {
+                        alert("يجب إعطاء صلاحية الميكروفون للصعود.");
+                        console.error(err);
+                    }
+                }
+            });
+        });
+
+        // إغلاق المايكروفون المحلي الخاص بي
+        function stopMyMic() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+        }
+
+        // ==========================================
+        // 3. الدردشة الكتابية (نفسها بدون تغيير)
+        // ==========================================
         const chatInput = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
         const chatArea = document.getElementById('chatArea');
 
-        // إنشاء اسم عشوائي للمستخدم (لكي نميز من الذي أرسل الرسالة)
-        // في المستقبل يمكنك جعله يسجل دخوله باسمه الحقيقي
-        const myName = "ضيف_" + Math.floor(Math.random() * 1000);
-
-        // 4. دالة إرسال الرسالة إلى Firebase
         function sendMessage() {
             const text = chatInput.value.trim();
             if (text === "") return;
-
-            // إرسال البيانات لقاعدة البيانات
-            push(messagesRef, {
-                sender: myName,
-                text: text,
-                timestamp: Date.now()
-            });
-
-            chatInput.value = ""; // تفريغ الحقل
+            push(messagesRef, { sender: myName, text: text, timestamp: Date.now() });
+            chatInput.value = "";
         }
 
-        // تفعيل الإرسال عند الضغط على الزر أو زر Enter
         sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // 5. الاستماع الدائم للرسائل القادمة من Firebase وعرضها للجميع
         onChildAdded(messagesRef, (snapshot) => {
             const data = snapshot.val();
-            displayMessage(data.sender, data.text);
-        });
-
-        // دالة رسم الرسالة على الشاشة
-        function displayMessage(sender, text) {
             const messageDiv = document.createElement('div');
             
-            // إذا كان مرسل الرسالة هو أنا، اجعلها زرقاء وعلى اليمين
-            if (sender === myName) {
+            if (data.sender === myName) {
                 messageDiv.className = 'message mine';
-                messageDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
+                messageDiv.innerHTML = `<div class="msg-bubble">${data.text}</div>`;
             } else {
-                // إذا كان المرسل شخص آخر، أظهر اسمه واجعلها رمادية على اليسار
                 messageDiv.className = 'message';
-                messageDiv.innerHTML = `
-                    <div class="msg-sender">${sender}</div>
-                    <div class="msg-bubble">${text}</div>
-                `;
+                messageDiv.innerHTML = `<div class="msg-sender">${data.sender}</div><div class="msg-bubble">${data.text}</div>`;
             }
 
             chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight; // النزول للأسفل تلقائياً
-        }
+            chatArea.scrollTop = chatArea.scrollHeight;
+        });
+
+        // تنظيف الفايربيس من اسمي عند إغلاق المتصفح (حتى لا يبقى المايك معلقاً)
+        window.addEventListener("beforeunload", () => {
+            if (myCurrentMicIndex !== -1) {
+                remove(ref(db, `room-mics/${myCurrentMicIndex}`));
+            }
+        });
+
     </script>
 </body>
 </html>
