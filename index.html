@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي الشامل - Chat & Audio</title>
+    <title>الروم الصوتي - نسخة الفحص (Debugging)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
-        /* التصميم نفسه تماماً ولم يتغير */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background: #0b0f19; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; }
         .app-container { width: 100%; max-width: 400px; height: 100vh; max-height: 850px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
@@ -36,6 +35,25 @@
         .chat-input:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); }
         .send-btn { background: #3b82f6; color: #fff; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
         .send-btn:hover { background: #2563eb; transform: scale(1.05); }
+        
+        /* تنسيق خاص لمشغلات الصوت لكي تكون واضحة للفحص */
+        .audio-debug-area {
+            background: #1e293b;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            border-top: 1px solid #334155;
+        }
+        .audio-debug-area audio {
+            width: 100%;
+            height: 30px;
+        }
+        .debug-title {
+            font-size: 0.7rem;
+            color: #fbbf24;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -62,17 +80,20 @@
             </button>
         </div>
 
-        <audio id="audio-0" autoplay></audio>
-        <audio id="audio-1" autoplay></audio>
-        <audio id="audio-2" autoplay></audio>
-        <audio id="audio-3" autoplay></audio>
+        <div class="audio-debug-area">
+            <div class="debug-title">منطقة فحص الصوت (ستُخفى لاحقاً)</div>
+            <audio id="audio-0" autoplay playsinline controls></audio>
+            <audio id="audio-1" autoplay playsinline controls></audio>
+            <audio id="audio-2" autoplay playsinline controls></audio>
+            <audio id="audio-3" autoplay playsinline controls></audio>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // إعدادات Firebase
+        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
             authDomain: "fn1998.firebaseapp.com",
@@ -86,13 +107,13 @@
         const db = getDatabase(app);
         
         const messagesRef = ref(db, 'room-messages');
-        const micsRef = ref(db, 'room-mics'); // مسار جديد لحفظ بيانات المايكات
+        const micsRef = ref(db, 'room-mics'); 
 
         const myName = "ضيف_" + Math.floor(Math.random() * 1000);
         let myCurrentMicIndex = -1;
         let myPeerId = null;
         let localStream = null;
-        let activeCalls = {}; // لحفظ الاتصالات الصوتية النشطة
+        let activeCalls = {}; 
 
         // ==========================================
         // 1. إعداد PeerJS (محرك الصوت)
@@ -104,14 +125,16 @@
             document.getElementById('statusText').innerText = `متصل كـ: ${myName}`;
         });
 
-        // عندما يتصل بنا شخص للاستماع لصوتنا، نرد عليه ونعطيه المايك الخاص بنا
+        // الرد على الاتصالات القادمة وإرسال الصوت
         peer.on('call', (call) => {
             if (localStream) {
                 call.answer(localStream);
+            } else {
+                // إذا لم يكن لدي مايك مفتوح، أرد بتيار فارغ فقط لإتمام الاتصال
+                call.answer(createEmptyAudioStream());
             }
         });
 
-        // دالة مساعدة لإنشاء "صوت صامت" لكي نتمكن من الاتصال بالآخرين للاستماع فقط
         function createEmptyAudioStream() {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const dest = ctx.createMediaStreamDestination();
@@ -119,10 +142,8 @@
         }
 
         // ==========================================
-        // 2. منطق إدارة المايكات والربط مع Firebase
+        // 2. إدارة المايكات
         // ==========================================
-        
-        // الاستماع الدائم لتغيرات المايكات من قاعدة البيانات لتحديث الواجهة للجميع
         onValue(micsRef, (snapshot) => {
             const micsData = snapshot.val() || {};
             
@@ -133,35 +154,32 @@
                 const audioElement = document.getElementById(`audio-${i}`);
 
                 if (slotData) {
-                    // المايك محجوز
                     slotElement.classList.add('active');
                     slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
                     nameElement.innerText = slotData.name;
 
                     // إذا كان الشخص الموجود على المايك ليس أنا، أتصل به لأسمع صوته
                     if (slotData.peerId !== myPeerId && !activeCalls[i]) {
-                        const dummyStream = createEmptyAudioStream(); // إرسال تيار صامت لكي لا نفتح مايك المستمع
-                        const call = peer.call(slotData.peerId, dummyStream);
+                        const call = peer.call(slotData.peerId, createEmptyAudioStream());
                         activeCalls[i] = call;
                         
                         call.on('stream', (remoteStream) => {
                             audioElement.srcObject = remoteStream;
+                            // محاولة تشغيل الصوت برمجياً (مهم للهواتف)
+                            audioElement.play().catch(e => console.log("المتصفح يحتاج تفاعل لتشغيل الصوت", e));
                         });
                     }
                 } else {
-                    // المايك فارغ
                     slotElement.classList.remove('active');
                     slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
                     nameElement.innerText = "فارغ";
                     
-                    // إغلاق الاتصال الصوتي إذا كان مفتوحاً
                     if (activeCalls[i]) {
                         activeCalls[i].close();
                         delete activeCalls[i];
                         audioElement.srcObject = null;
                     }
                     
-                    // إذا كان المايك الفارغ مسجلاً باسمي محلياً عن طريق الخطأ، أصفره
                     if (myCurrentMicIndex === i) {
                         myCurrentMicIndex = -1;
                         stopMyMic();
@@ -170,41 +188,34 @@
             }
         });
 
-        // التعامل مع النقرات على دوائر المايكات
         document.querySelectorAll('.mic-slot').forEach(slot => {
             slot.addEventListener('click', async function() {
                 const index = parseInt(this.getAttribute('data-index'));
 
-                // الحالة 1: أريد النزول من المايك
                 if (myCurrentMicIndex === index) {
                     if (confirm("هل تريد النزول من المايك؟")) {
-                        remove(ref(db, `room-mics/${index}`)); // حذف اسمي من الفايربيس
+                        remove(ref(db, `room-mics/${index}`)); 
                         stopMyMic();
                         myCurrentMicIndex = -1;
                     }
                     return;
                 }
 
-                // الحالة 2: أنا على مايك وأحاول الضغط على مايك آخر
                 if (myCurrentMicIndex !== -1 && myCurrentMicIndex !== index) {
                     alert("أنت متواجد على مايك آخر بالفعل!");
                     return;
                 }
 
-                // الحالة 3: المايك محجوز لشخص آخر
                 if (this.classList.contains('active')) {
                     alert("هذا المايك محجوز لشخص آخر.");
                     return;
                 }
 
-                // الحالة 4: المايك فارغ وأريد الصعود
                 if (confirm("هل تريد الصعود والتحدث؟")) {
                     try {
-                        // طلب إذن المايكروفون من الهاتف
                         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                         myCurrentMicIndex = index;
                         
-                        // تسجيل بياناتي في الفايربيس في هذا المايك ليسمعني الآخرون
                         set(ref(db, `room-mics/${index}`), {
                             name: myName,
                             peerId: myPeerId
@@ -218,7 +229,6 @@
             });
         });
 
-        // إغلاق المايكروفون المحلي الخاص بي
         function stopMyMic() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
@@ -227,7 +237,7 @@
         }
 
         // ==========================================
-        // 3. الدردشة الكتابية (نفسها بدون تغيير)
+        // 3. الدردشة الكتابية
         // ==========================================
         const chatInput = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
@@ -259,7 +269,6 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         });
 
-        // تنظيف الفايربيس من اسمي عند إغلاق المتصفح (حتى لا يبقى المايك معلقاً)
         window.addEventListener("beforeunload", () => {
             if (myCurrentMicIndex !== -1) {
                 remove(ref(db, `room-mics/${myCurrentMicIndex}`));
