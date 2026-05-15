@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي - نسخة الفحص (Debugging)</title>
+    <title>الروم الصوتي - النسخة المستقرة</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
@@ -36,24 +35,9 @@
         .send-btn { background: #3b82f6; color: #fff; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
         .send-btn:hover { background: #2563eb; transform: scale(1.05); }
         
-        /* تنسيق خاص لمشغلات الصوت لكي تكون واضحة للفحص */
-        .audio-debug-area {
-            background: #1e293b;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            border-top: 1px solid #334155;
-        }
-        .audio-debug-area audio {
-            width: 100%;
-            height: 30px;
-        }
-        .debug-title {
-            font-size: 0.7rem;
-            color: #fbbf24;
-            text-align: center;
-        }
+        .audio-debug-area { background: #1e293b; padding: 10px; display: flex; flex-direction: column; gap: 5px; border-top: 1px solid #334155; }
+        .audio-debug-area audio { width: 100%; height: 30px; }
+        .debug-title { font-size: 0.7rem; color: #fbbf24; text-align: center; }
     </style>
 </head>
 <body>
@@ -81,7 +65,7 @@
         </div>
 
         <div class="audio-debug-area">
-            <div class="debug-title">منطقة فحص الصوت (ستُخفى لاحقاً)</div>
+            <div class="debug-title">منطقة فحص الصوت</div>
             <audio id="audio-0" autoplay playsinline controls></audio>
             <audio id="audio-1" autoplay playsinline controls></audio>
             <audio id="audio-2" autoplay playsinline controls></audio>
@@ -93,7 +77,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // إعدادات Firebase الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
             authDomain: "fn1998.firebaseapp.com",
@@ -113,10 +96,11 @@
         let myCurrentMicIndex = -1;
         let myPeerId = null;
         let localStream = null;
-        let activeCalls = {}; 
+        let activeConnections = {}; 
+        let globalMicsData = {}; // لحفظ نسخة محلية من بيانات المايكات
 
         // ==========================================
-        // 1. إعداد PeerJS (محرك الصوت)
+        // 1. إعداد محرك الصوت (PeerJS) بالطريقة العكسية
         // ==========================================
         const peer = new Peer();
         
@@ -125,30 +109,46 @@
             document.getElementById('statusText').innerText = `متصل كـ: ${myName}`;
         });
 
-        // الرد على الاتصالات القادمة وإرسال الصوت
-        peer.on('call', (call) => {
-            if (localStream) {
-                call.answer(localStream);
-            } else {
-                // إذا لم يكن لدي مايك مفتوح، أرد بتيار فارغ فقط لإتمام الاتصال
-                call.answer(createEmptyAudioStream());
-            }
+        // عندما أنا أكون المتحدث (على المايك)، وأستقبل "إشارة" من مستمع
+        peer.on('connection', (conn) => {
+            conn.on('open', () => {
+                if (localStream) {
+                    // أرسل له مسار المايك الحقيقي الخاص بي
+                    peer.call(conn.peer, localStream);
+                }
+            });
         });
 
-        function createEmptyAudioStream() {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const dest = ctx.createMediaStreamDestination();
-            return dest.stream;
-        }
+        // عندما أنا أكون المستمع، وأستقبل "مكالمة الصوت" من المتحدث
+        peer.on('call', (call) => {
+            // أرد على المكالمة فوراً (بدون إرسال مايك من جهتي)
+            call.answer(); 
+            
+            call.on('stream', (remoteStream) => {
+                // البحث عن المايك الذي ينتمي إليه هذا الصوت في الواجهة
+                for (let i = 0; i < 4; i++) {
+                    if (globalMicsData[i] && globalMicsData[i].peerId === call.peer) {
+                        const audioElement = document.getElementById(`audio-${i}`);
+                        audioElement.srcObject = remoteStream;
+                        
+                        // محاولة التشغيل، وإذا رفض المتصفح نظهر تنبيهاً
+                        audioElement.play().catch(e => {
+                            console.log("انقر على الشاشة لسماع الصوت", e);
+                        });
+                        break;
+                    }
+                }
+            });
+        });
 
         // ==========================================
-        // 2. إدارة المايكات
+        // 2. إدارة المايكات وتحديث الواجهة
         // ==========================================
         onValue(micsRef, (snapshot) => {
-            const micsData = snapshot.val() || {};
+            globalMicsData = snapshot.val() || {};
             
             for (let i = 0; i < 4; i++) {
-                const slotData = micsData[i];
+                const slotData = globalMicsData[i];
                 const slotElement = document.getElementById(`slot-${i}`);
                 const nameElement = document.getElementById(`name-${i}`);
                 const audioElement = document.getElementById(`audio-${i}`);
@@ -158,25 +158,20 @@
                     slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
                     nameElement.innerText = slotData.name;
 
-                    // إذا كان الشخص الموجود على المايك ليس أنا، أتصل به لأسمع صوته
-                    if (slotData.peerId !== myPeerId && !activeCalls[i]) {
-                        const call = peer.call(slotData.peerId, createEmptyAudioStream());
-                        activeCalls[i] = call;
-                        
-                        call.on('stream', (remoteStream) => {
-                            audioElement.srcObject = remoteStream;
-                            // محاولة تشغيل الصوت برمجياً (مهم للهواتف)
-                            audioElement.play().catch(e => console.log("المتصفح يحتاج تفاعل لتشغيل الصوت", e));
-                        });
+                    // إذا كان هناك شخص على المايك (وليس أنا)، أرسل له إشارة ليعطيني صوته
+                    if (slotData.peerId !== myPeerId && !activeConnections[i]) {
+                        const conn = peer.connect(slotData.peerId); // إرسال الإشارة الصامتة
+                        activeConnections[i] = conn;
                     }
                 } else {
                     slotElement.classList.remove('active');
                     slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
                     nameElement.innerText = "فارغ";
                     
-                    if (activeCalls[i]) {
-                        activeCalls[i].close();
-                        delete activeCalls[i];
+                    // تنظيف وإغلاق الصوت إذا نزل الشخص من المايك
+                    if (activeConnections[i]) {
+                        activeConnections[i].close();
+                        delete activeConnections[i];
                         audioElement.srcObject = null;
                     }
                     
@@ -188,6 +183,7 @@
             }
         });
 
+        // أزرار المايكات
         document.querySelectorAll('.mic-slot').forEach(slot => {
             slot.addEventListener('click', async function() {
                 const index = parseInt(this.getAttribute('data-index'));
@@ -274,7 +270,6 @@
                 remove(ref(db, `room-mics/${myCurrentMicIndex}`));
             }
         });
-
     </script>
 </body>
 </html>
