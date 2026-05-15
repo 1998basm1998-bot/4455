@@ -1,0 +1,61 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+body { background: #0b0f19; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; }
+.app-container { width: 100%; max-width: 400px; height: 100vh; max-height: 850px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+.header { padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); z-index: 10; }
+.header h2 { font-size: 1.2rem; margin-bottom: 5px; color: #f8fafc; }
+.header p { font-size: 0.8rem; color: #94a3b8; }
+
+.stage { padding: 30px 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; justify-items: center; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+
+/* تصميم التاج الفارغ */
+.mic-slot { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); border: 2px dashed rgba(255, 255, 255, 0.2); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
+.mic-slot i { font-size: 1.5rem; color: #475569; transition: 0.3s; }
+
+/* تصميم التاج الذهبي المتحرك (عند الصعود) */
+.mic-slot.active { 
+    background: linear-gradient(135deg, #ffd700, #b8860b); 
+    border: 2px solid #ffeb3b; 
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); 
+    animation: goldPulse 2s infinite ease-in-out;
+}
+.mic-slot.active i { color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+/* حركة النبض الذهبي */
+@keyframes goldPulse {
+    0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); transform: scale(1); }
+    50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.8); transform: scale(1.05); }
+    100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); transform: scale(1); }
+}
+
+.slot-name { font-size: 0.7rem; margin-top: 8px; color: #cbd5e1; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold;}
+.slot-wrapper { display: flex; flex-direction: column; align-items: center; width: 60px; }
+
+/* منطقة الشات */
+.chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
+.message { max-width: 80%; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.msg-sender { font-size: 0.7rem; color: #94a3b8; margin-bottom: 3px; margin-right: 5px;}
+.msg-bubble { background: rgba(255, 255, 255, 0.1); padding: 10px 15px; border-radius: 15px 15px 0 15px; font-size: 0.9rem; line-height: 1.4; color: #f1f5f9; word-wrap: break-word;}
+.message.mine { align-self: flex-end; }
+.message.mine .msg-bubble { background: #3b82f6; border-radius: 15px 15px 15px 0; color: #fff; }
+.message.mine .msg-sender { display: none; }
+
+.input-area { padding: 15px; background: rgba(15, 23, 42, 0.9); border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; gap: 10px; align-items: center; }
+.chat-input { flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 12px 15px; border-radius: 25px; font-size: 0.9rem; outline: none; transition: 0.3s; }
+.chat-input:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); }
+.send-btn { background: #3b82f6; color: #fff; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
+.send-btn:hover { background: #2563eb; transform: scale(1.05); }
+
+/* نافذة التنبيهات الجميلة (Modal) */
+.custom-modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; opacity: 0; transition: opacity 0.3s; }
+.custom-modal-overlay.show { display: flex; opacity: 1; }
+.custom-modal-box { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); padding: 25px; border-radius: 20px; text-align: center; width: 80%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: translateY(-20px); transition: transform 0.3s; }
+.custom-modal-overlay.show .custom-modal-box { transform: translateY(0); }
+.custom-modal-box h3 { color: #f8fafc; margin-bottom: 10px; font-size: 1.2rem; }
+.custom-modal-box p { color: #cbd5e1; font-size: 0.9rem; margin-bottom: 20px; }
+.modal-buttons { display: flex; gap: 10px; justify-content: center; }
+.modal-buttons button { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.btn-yes { background: #3b82f6; color: white; }
+.btn-yes:hover { background: #2563eb; }
+.btn-no { background: #475569; color: white; }
+.btn-no:hover { background: #334155; }
