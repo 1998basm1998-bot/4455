@@ -3,60 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي - النسخة العنيدة</title>
+    <title>الروم الصوتي - الملكي</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #0b0f19; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #fff; }
-        .app-container { width: 100%; max-width: 400px; height: 100vh; max-height: 850px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .header { padding: 20px; text-align: center; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); z-index: 10; }
-        .header h2 { font-size: 1.2rem; margin-bottom: 5px; color: #f8fafc; }
-        
-        #sysLogs { background: rgba(0,0,0,0.8); color: #00ff00; font-size: 10px; padding: 5px; height: 60px; overflow-y: auto; text-align: left; direction: ltr; font-family: monospace; border-bottom: 1px solid #333; }
-        
-        .stage { padding: 30px 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; justify-items: center; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        .mic-slot { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); border: 2px dashed rgba(255, 255, 255, 0.2); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
-        .mic-slot i { font-size: 1.2rem; color: #64748b; }
-        .mic-slot.active { background: linear-gradient(135deg, #3b82f6, #06b6d4); border: 2px solid #00d2ff; box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
-        .mic-slot.active i { color: #fff; }
-        .slot-name { font-size: 0.7rem; margin-top: 5px; color: #cbd5e1; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
-        .slot-wrapper { display: flex; flex-direction: column; align-items: center; width: 60px; }
-        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
-        .message { max-width: 80%; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .msg-sender { font-size: 0.7rem; color: #94a3b8; margin-bottom: 3px; margin-right: 5px;}
-        .msg-bubble { background: rgba(255, 255, 255, 0.1); padding: 10px 15px; border-radius: 15px 15px 0 15px; font-size: 0.9rem; line-height: 1.4; color: #f1f5f9; word-wrap: break-word;}
-        .message.mine { align-self: flex-end; }
-        .message.mine .msg-bubble { background: #3b82f6; border-radius: 15px 15px 15px 0; color: #fff; }
-        .message.mine .msg-sender { display: none; }
-        .input-area { padding: 15px; background: rgba(15, 23, 42, 0.9); border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; gap: 10px; align-items: center; }
-        .chat-input { flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; padding: 12px 15px; border-radius: 25px; font-size: 0.9rem; outline: none; transition: 0.3s; }
-        .chat-input:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); }
-        .send-btn { background: #3b82f6; color: #fff; border: none; width: 45px; height: 45px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; }
-        .send-btn:hover { background: #2563eb; transform: scale(1.05); }
-        
-        .audio-debug-area { background: #1e293b; padding: 10px; display: flex; flex-direction: column; gap: 5px; border-top: 1px solid #334155; }
-        .audio-debug-area audio { width: 100%; height: 30px; }
-        .debug-title { font-size: 0.7rem; color: #fbbf24; text-align: center; }
-    </style>
 </head>
 <body>
 
     <div class="app-container">
-        <div id="sysLogs">System Ready...</div>
-
         <div class="header">
             <h2>الروم الصوتي العام 🎙️</h2>
             <p id="statusText">جاري الاتصال...</p>
         </div>
 
         <div class="stage">
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-0" data-index="0"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-0">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-1" data-index="1"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-1">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-2" data-index="2"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-2">فارغ</div></div>
-            <div class="slot-wrapper"><div class="mic-slot" id="slot-3" data-index="3"><i class="fa-solid fa-plus"></i></div><div class="slot-name" id="name-3">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-0" data-index="0"><i class="fa-solid fa-crown"></i></div><div class="slot-name" id="name-0">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-1" data-index="1"><i class="fa-solid fa-crown"></i></div><div class="slot-name" id="name-1">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-2" data-index="2"><i class="fa-solid fa-crown"></i></div><div class="slot-name" id="name-2">فارغ</div></div>
+            <div class="slot-wrapper"><div class="mic-slot" id="slot-3" data-index="3"><i class="fa-solid fa-crown"></i></div><div class="slot-name" id="name-3">فارغ</div></div>
         </div>
 
         <div class="chat-area" id="chatArea"></div>
@@ -66,217 +30,25 @@
             <button class="send-btn" id="sendBtn"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
 
-        <div class="audio-debug-area">
-            <div class="debug-title">منطقة فحص الصوت</div>
-            <audio id="audio-0" autoplay playsinline controls></audio>
-            <audio id="audio-1" autoplay playsinline controls></audio>
-            <audio id="audio-2" autoplay playsinline controls></audio>
-            <audio id="audio-3" autoplay playsinline controls></audio>
+        <div style="display: none;">
+            <audio id="audio-0" autoplay playsinline></audio>
+            <audio id="audio-1" autoplay playsinline></audio>
+            <audio id="audio-2" autoplay playsinline></audio>
+            <audio id="audio-3" autoplay playsinline></audio>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, set, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <div class="custom-modal-overlay" id="customModal">
+        <div class="custom-modal-box">
+            <h3 id="modalTitle">تنبيه</h3>
+            <p id="modalMessage">رسالة التنبيه هنا</p>
+            <div class="modal-buttons">
+                <button id="modalBtnYes" class="btn-yes">موافق</button>
+                <button id="modalBtnNo" class="btn-no">إلغاء</button>
+            </div>
+        </div>
+    </div>
 
-        const sysLogs = document.getElementById('sysLogs');
-        function log(msg) {
-            sysLogs.innerHTML += `<br>> ${msg}`;
-            sysLogs.scrollTop = sysLogs.scrollHeight;
-        }
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
-            authDomain: "fn1998.firebaseapp.com",
-            projectId: "fn1998",
-            storageBucket: "fn1998.firebasestorage.app",
-            messagingSenderId: "326727010464",
-            appId: "1:326727010464:web:831654b2593ae59d5821c5"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const messagesRef = ref(db, 'room-messages');
-        const micsRef = ref(db, 'room-mics'); 
-
-        const myName = "ضيف_" + Math.floor(Math.random() * 1000);
-        let myCurrentMicIndex = -1;
-        let myPeerId = null;
-        let localStream = null;
-        let activeConnections = {}; 
-        let globalMicsData = {}; 
-
-        const peer = new Peer({
-            config: {
-                'iceServers': [
-                    { url: 'stun:stun.l.google.com:19302' },
-                    { url: 'stun:stun1.l.google.com:19302' }
-                ]
-            },
-            debug: 0
-        });
-        
-        peer.on('open', (id) => {
-            myPeerId = id;
-            document.getElementById('statusText').innerText = `متصل كـ: ${myName}`;
-            log("Peer Ready: " + id.substring(0,5));
-        });
-
-        // *** إضافة نظام الإنعاش التلقائي هنا ***
-        peer.on('disconnected', () => {
-            log("PEER_ERROR: disconnected. Reconnecting...");
-            peer.reconnect(); // أمر إعادة الاتصال بالسيرفر فوراً
-        });
-
-        peer.on('error', (err) => {
-            log("PEER_ERROR: " + err.type);
-            if(err.type === 'peer-unavailable') {
-                log("Ignoring ghost user...");
-            } else if(err.type === 'network') {
-                log("Network error. Attempting reconnect...");
-                peer.reconnect();
-            }
-        });
-
-        peer.on('connection', (conn) => {
-            conn.on('data', (data) => {
-                if (data === 'CALL_ME_BRO' && localStream) {
-                    peer.call(conn.peer, localStream);
-                }
-            });
-        });
-
-        peer.on('call', (call) => {
-            call.answer(); 
-            call.on('stream', (remoteStream) => {
-                for (let i = 0; i < 4; i++) {
-                    if (globalMicsData[i] && globalMicsData[i].peerId === call.peer) {
-                        const audioElement = document.getElementById(`audio-${i}`);
-                        audioElement.srcObject = remoteStream;
-                        audioElement.play().catch(() => log("Play blocked."));
-                        break;
-                    }
-                }
-            });
-        });
-
-        onValue(micsRef, (snapshot) => {
-            globalMicsData = snapshot.val() || {};
-            
-            for (let i = 0; i < 4; i++) {
-                const slotData = globalMicsData[i];
-                const slotElement = document.getElementById(`slot-${i}`);
-                const nameElement = document.getElementById(`name-${i}`);
-                const audioElement = document.getElementById(`audio-${i}`);
-
-                if (slotData) {
-                    slotElement.classList.add('active');
-                    slotElement.innerHTML = '<i class="fa-solid fa-microphone"></i>';
-                    nameElement.innerText = slotData.name;
-
-                    if (slotData.peerId !== myPeerId && !activeConnections[i]) {
-                        // التحقق من أن اتصالي بسيرفر PeerJS ما زال حياً قبل محاولة الاتصال بغيري
-                        if(!peer.disconnected) {
-                            const conn = peer.connect(slotData.peerId);
-                            activeConnections[i] = conn;
-                            conn.on('open', () => conn.send('CALL_ME_BRO'));
-                        } else {
-                            log("Waiting for reconnect to call...");
-                        }
-                    }
-                } else {
-                    slotElement.classList.remove('active');
-                    slotElement.innerHTML = '<i class="fa-solid fa-plus"></i>';
-                    nameElement.innerText = "فارغ";
-                    
-                    if (activeConnections[i]) {
-                        activeConnections[i].close();
-                        delete activeConnections[i];
-                        audioElement.srcObject = null;
-                    }
-                    if (myCurrentMicIndex === i) {
-                        myCurrentMicIndex = -1;
-                        stopMyMic();
-                    }
-                }
-            }
-        });
-
-        document.querySelectorAll('.mic-slot').forEach(slot => {
-            slot.addEventListener('click', async function() {
-                const index = parseInt(this.getAttribute('data-index'));
-
-                if (myCurrentMicIndex === index) {
-                    if (confirm("هل تريد النزول من المايك؟")) {
-                        const micRef = ref(db, `room-mics/${index}`);
-                        remove(micRef); 
-                        onDisconnect(micRef).cancel(); 
-                        stopMyMic();
-                        myCurrentMicIndex = -1;
-                    }
-                    return;
-                }
-
-                if (myCurrentMicIndex !== -1) {
-                    alert("أنت متواجد على مايك آخر!");
-                    return;
-                }
-
-                if (this.classList.contains('active')) {
-                    alert("المايك محجوز.");
-                    return;
-                }
-
-                if (confirm("هل تريد الصعود والتحدث؟")) {
-                    try {
-                        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        myCurrentMicIndex = index;
-                        
-                        const micRef = ref(db, `room-mics/${index}`);
-                        onDisconnect(micRef).remove();
-                        set(micRef, { name: myName, peerId: myPeerId });
-                    } catch (err) {
-                        alert("فشل الوصول للمايك.");
-                    }
-                }
-            });
-        });
-
-        function stopMyMic() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-        }
-
-        const chatInput = document.getElementById('chatInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const chatArea = document.getElementById('chatArea');
-
-        function sendMessage() {
-            const text = chatInput.value.trim();
-            if (text === "") return;
-            push(messagesRef, { sender: myName, text: text, timestamp: Date.now() });
-            chatInput.value = "";
-        }
-
-        sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-
-        onChildAdded(messagesRef, (snapshot) => {
-            const data = snapshot.val();
-            const messageDiv = document.createElement('div');
-            if (data.sender === myName) {
-                messageDiv.className = 'message mine';
-                messageDiv.innerHTML = `<div class="msg-bubble">${data.text}</div>`;
-            } else {
-                messageDiv.className = 'message';
-                messageDiv.innerHTML = `<div class="msg-sender">${data.sender}</div><div class="msg-bubble">${data.text}</div>`;
-            }
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        });
-
-    </script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
