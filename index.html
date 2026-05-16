@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الروم الصوتي - الملكي</title>
+    <title>روم المحبة البسيطة</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="app-container" id="appContainer">
         <div class="header">
-            <h2>الروم الصوتي العام 🎙️</h2>
+            <button class="settings-trigger" id="settingsBtn">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+            <h2>روم المحبة البسيطة 💖</h2>
             <p id="statusText">جاري الاتصال...</p>
         </div>
 
@@ -35,6 +38,25 @@
             <audio id="audio-1" autoplay playsinline></audio>
             <audio id="audio-2" autoplay playsinline></audio>
             <audio id="audio-3" autoplay playsinline></audio>
+        </div>
+
+        <div class="settings-overlay" id="settingsOverlay">
+            <div class="settings-box">
+                <div class="settings-header">
+                    <h3>خلفيات الروم الملكية ✨</h3>
+                    <button id="closeSettingsBtn"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="backgrounds-grid">
+                    <div class="bg-option" data-bg="https://g.top4top.io/p_3787y2p7w1.jpg" style="background-image: url('https://g.top4top.io/p_3787y2p7w1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://f.top4top.io/p_3787ctm0n1.jpg" style="background-image: url('https://f.top4top.io/p_3787ctm0n1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://h.top4top.io/p_3787b1dnu1.jpg" style="background-image: url('https://h.top4top.io/p_3787b1dnu1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://i.top4top.io/p_3787b202z1.jpg" style="background-image: url('https://i.top4top.io/p_3787b202z1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://k.top4top.io/p_3787pptdi1.jpg" style="background-image: url('https://k.top4top.io/p_3787pptdi1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://f.top4top.io/p_3787c8wpz1.jpg" style="background-image: url('https://f.top4top.io/p_3787c8wpz1.jpg')"></div>
+                    <div class="bg-option" data-bg="https://g.top4top.io/p_3787vhhv21.jpg" style="background-image: url('https://g.top4top.io/p_3787vhhv21.jpg')"></div>
+                    <div class="bg-option default-bg" data-bg="none">الافتراضية</div>
+                </div>
+            </div>
         </div>
     </div>
 
