@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onValue, remove, onDisconnect, query, orderByChild, endAt, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// إعدادات Firebase
+// إعدادات مشروع Firebase الخاص بك
 const firebaseConfig = {
     apiKey: "AIzaSyArg6aPnPyd0x5C2HbZ8o5wpVmhmmSYS6Q",
     authDomain: "fn1998.firebaseapp.com",
@@ -23,8 +23,27 @@ let localStream = null;
 let activeConnections = {}; 
 let globalMicsData = {}; 
 
+const appContainer = document.getElementById('appContainer');
+
 // --------------------------------------------------------
-// وظيفة حذف الرسائل القديمة (أكثر من 12 ساعة)
+// نظام استعادة وحفظ الخلفية المختارة تلقائياً (LocalStorage)
+// --------------------------------------------------------
+const savedBg = localStorage.getItem('room-wallpaper');
+if (savedBg && savedBg !== 'none') {
+    appContainer.style.backgroundImage = `url('${savedBg}')`;
+    setTimeout(() => {
+        const activeOption = document.querySelector(`.bg-option[data-bg="${savedBg}"]`);
+        if (activeOption) activeOption.classList.add('selected');
+    }, 500);
+} else {
+    setTimeout(() => {
+        const defaultOption = document.querySelector('.default-bg');
+        if (defaultOption) defaultOption.classList.add('selected');
+    }, 500);
+}
+
+// --------------------------------------------------------
+// وظيفة حذف الرسائل تلقائياً كل 12 ساعة للحفاظ على قاعدة البيانات
 // --------------------------------------------------------
 function cleanupOldMessages() {
     const twelveHoursInMs = 12 * 60 * 60 * 1000;
@@ -33,16 +52,14 @@ function cleanupOldMessages() {
     
     get(oldMessagesQuery).then((snapshot) => {
         snapshot.forEach((child) => {
-            remove(child.ref); // حذف الرسالة من قاعدة البيانات
+            remove(child.ref);
         });
-    }).catch(err => console.log("خطأ في التنظيف:", err));
+    }).catch(err => console.log("خطأ في تنظيف البيانات:", err));
 }
-// تشغيل التنظيف عند فتح التطبيق
 cleanupOldMessages();
 
-
 // --------------------------------------------------------
-// نظام التنبيهات المخصص (بديل Alert و Confirm)
+// نافذة التنبيهات المخصصة الاحترافية (بديل رسائل الكروم)
 // --------------------------------------------------------
 function showCustomModal(title, message, isConfirm = false) {
     return new Promise((resolve) => {
@@ -65,15 +82,41 @@ function showCustomModal(title, message, isConfirm = false) {
 
         modal.classList.add('show');
 
-        // تنظيف الأحداث السابقة حتى لا تتكرر
         btnYes.onclick = () => { modal.classList.remove('show'); resolve(true); };
         btnNo.onclick = () => { modal.classList.remove('show'); resolve(false); };
     });
 }
 
+// --------------------------------------------------------
+// التحكم بفتح وإغلاق تبويبة الإعدادات الخلفية
+// --------------------------------------------------------
+const settingsOverlay = document.getElementById('settingsOverlay');
+document.getElementById('settingsBtn').addEventListener('click', () => {
+    settingsOverlay.classList.add('show');
+});
+document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+    settingsOverlay.classList.remove('show');
+});
+
+// تفعيل اختيار الخلفيات وتطبيقها على كامل الشاشة تلقائياً
+document.querySelectorAll('.bg-option').forEach(option => {
+    option.addEventListener('click', function() {
+        const bgUrl = this.getAttribute('data-bg');
+        document.querySelectorAll('.bg-option').forEach(el => el.classList.remove('selected'));
+        this.classList.add('selected');
+        
+        if (bgUrl === 'none') {
+            appContainer.style.backgroundImage = 'none';
+            localStorage.setItem('room-wallpaper', 'none');
+        } else {
+            appContainer.style.backgroundImage = `url('${bgUrl}')`;
+            localStorage.setItem('room-wallpaper', bgUrl);
+        }
+    });
+});
 
 // --------------------------------------------------------
-// إعداد محرك الصوت (PeerJS & TURN Servers)
+// إعداد محرك الصوت (PeerJS & TURN Servers لشبكات الـ 4G)
 // --------------------------------------------------------
 const peer = new Peer({
     config: {
@@ -117,7 +160,7 @@ peer.on('call', (call) => {
 });
 
 // --------------------------------------------------------
-// إدارة التيجان الذهبية
+// إدارة التيجان الذهبية ومزامنة المايكات مع Firebase
 // --------------------------------------------------------
 onValue(micsRef, (snapshot) => {
     globalMicsData = snapshot.val() || {};
@@ -156,13 +199,13 @@ onValue(micsRef, (snapshot) => {
     }
 });
 
-// الضغط على التاج
+// النقر على منصة التاج الذهبي
 document.querySelectorAll('.mic-slot').forEach(slot => {
     slot.addEventListener('click', async function() {
         const index = parseInt(this.getAttribute('data-index'));
 
         if (myCurrentMicIndex === index) {
-            const wantToLeave = await showCustomModal("نزول", "هل تريد النزول من المنصة؟", true);
+            const wantToLeave = await showCustomModal("نزول", "هل تريد النزول من المنصة المايك؟", true);
             if (wantToLeave) {
                 const micRef = ref(db, `room-mics/${index}`);
                 remove(micRef); 
@@ -174,7 +217,7 @@ document.querySelectorAll('.mic-slot').forEach(slot => {
         }
 
         if (myCurrentMicIndex !== -1) {
-            showCustomModal("عذراً", "أنت متواجد على منصة أخرى بالفعل!");
+            showCustomModal("عذراً", "أنت متواجد على تاج آخر بالفعل! انزل أولاً.");
             return;
         }
 
@@ -183,7 +226,7 @@ document.querySelectorAll('.mic-slot').forEach(slot => {
             return;
         }
 
-        const wantToJoin = await showCustomModal("صعود", "هل تريد الصعود إلى المنصة والتحدث؟", true);
+        const wantToJoin = await showCustomModal("صعود والمنصة", "هل تريد الصعود للمايك والتحدث؟", true);
         if (wantToJoin) {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -192,7 +235,7 @@ document.querySelectorAll('.mic-slot').forEach(slot => {
                 onDisconnect(micRef).remove();
                 set(micRef, { name: myName, peerId: myPeerId });
             } catch (err) {
-                showCustomModal("خطأ", "يجب إعطاء صلاحية الميكروفون للصعود.");
+                showCustomModal("خطأ", "يجب إعطاء صلاحية الميكروفون للهاتف للصعود.");
             }
         }
     });
@@ -206,7 +249,7 @@ function stopMyMic() {
 }
 
 // --------------------------------------------------------
-// الدردشة الكتابية
+// نظام الدردشة النصية اللحظية
 // --------------------------------------------------------
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
